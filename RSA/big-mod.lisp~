@@ -1,0 +1,9 @@
+o(load "../math/math.lisp")
+
+(defun big-mod (b p m)
+  (cond ((= p 0) 1)
+        ((= p 1) (mod b m))
+        ((= (mod p 2) 1)
+         (mod (* b (square (big-mod b (/ p 2) m))) m))
+        (t
+         (mod (big-mod b (/ p 2) m) m))))

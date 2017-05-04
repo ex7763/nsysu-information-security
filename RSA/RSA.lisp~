@@ -1,0 +1,59 @@
+;;(load "../math/general.lisp")
+;; (n,e) is public key
+;; (n,d) is private key
+;; e = 3,17
+;;(setf *read-base* 10)
+;;(setf *print-base* 2)
+
+(defstruct rsa-key
+  name
+  n
+  private-key ;;d
+  public-key  ;;e
+  comments
+  )
+
+
+;;擴展式歐幾里得演算法（Extended Euclidean Algorithm）
+;;求模反元素
+(defun modular-inverse (a n)
+  (let ((x 0) (r n)
+        (newx 1) (newr a)
+        (quotient 0)
+        (tmp 0))
+    (loop
+       (when (= newr 0) (return))
+       (setf quotient (floor (/ r newr)))
+       (setf tmp newx
+             newx (- x (* quotient newx))
+             x tmp)
+       (setf tmp newr
+             newr (- r (* quotient newr))
+             r tmp)
+         (progn
+           (when (> r 1) 0)
+           (when (< x 0)
+             (return-from modular-inverse (+ x n))))))))
+
+(defun generate-rsa-key (name bits &optional (e 3))
+  (let* (
+  ;;(*print-base* 16)
+         (length (/ bits 2))
+         (p (generate-prime length))
+         (q (generate-prime length))
+         (n (* p q))
+         (r (* (- p 1) (- q 1)))
+         (d (modular-inverse e n)))
+    (make-rsa-key :name name
+                  :n n
+                  :private-key d
+                  :public-key e)))
+
+(defun rsa-save-key (key filename)
+  ;;(setf *print-base* 16)
+  (with-open-file (s filename :direction :output :if-exists)
+    (format s "~S" key)))
+
+(defvar plaintext 1234567 )
+
+3 134249587687110082977668759502323269315497696468763546421698175887159325636088941279198497418755984937731142940243094550819041611328549694677734961540079152087450002761844921979419330323712779961490013436089248825270934975761218525490063991761070364237019037360695011552999995505910687256108439763857354083861
