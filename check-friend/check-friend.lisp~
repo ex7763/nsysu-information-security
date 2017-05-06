@@ -1,0 +1,3 @@
+(defun cf-sig-myfried (&optional filename "myfriend")
+    (with-open-file (str filename)
+    

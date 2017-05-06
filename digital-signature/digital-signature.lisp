@@ -15,8 +15,9 @@
 
 (defun sig-check-id ()
   (with-open-file (str "SIG_CHECK_FILE")
-    (let ((name (read str))
-          (ran (read str))
+  ;;name
+    (read str)
+    (let ((ran (read str))
           (en-ran (read str))
           (key (list (read str) (read str))))
       (if (= ran (rsa-encrypt-unit en-ran key))
@@ -39,4 +40,4 @@
                          (list salt)))
          (db) 
          (H (hash m)))
-    (format t "~A" H)))
+       (return-from sig-encrypt-rsa-pss H)))
