@@ -28,7 +28,7 @@
 ;;make prime? faster
 ;;1024bits <1.00 seconds
 (defun prime-table-check (num)
-  (with-open-file (str "./prime-table" :direction :input)
+  (with-open-file (str "./math/prime-table" :direction :input)
     (do ((prime (read str nil 'eof)
                 (read str nil 'eof)))
         ((eql prime 'eof))

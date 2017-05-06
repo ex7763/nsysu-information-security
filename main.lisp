@@ -5,4 +5,7 @@
 (load "./digital-signature/digital-signature.lisp")
 
 
-;;(rsa-get-key "key")
+(rsa-get-key "key")
+(sig-generate-id "eddie")
+(format t "~%~%TEST ~A~%~%" (sig-check-id))
+(sig-encrypt-rsa-pss "test")

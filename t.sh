@@ -1,4 +1,4 @@
 #!/bin/bash
 
 sbcl < main.lisp
-cat key
+rm -f key SIG_CHECK_FILE
