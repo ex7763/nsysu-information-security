@@ -8,6 +8,8 @@
 
 (rsa-get-key "key")
 (sig-generate-id "eddie")
-(format t "~%~%TEST ~A~%~%" (sig-check-id))
-;;(sig-encrypt-rsa-pss "test")
+;;(format t "~%~%TEST ~A~%~%" (sig-check-id))
+(setf sig-test (sig-encrypt-rsa-pss "Andy"))
+(sig-decrypt-rsa-pss "Andy" sig-test)
 (cf-sig-myfriend)
+(read)

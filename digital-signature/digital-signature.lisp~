@@ -10,7 +10,11 @@
     (with-open-file (str "SIG_CHECK_FILE" :direction :output
                          :if-exists :supersede)
       ;; name random_number encrypt-random_number public_key n
-      (format str "~A~%~A~%~A~%~A~%~A~%~%" name ran (rsa-decrypt-unit ran) (rsa-key-public-key *rsa-key*) (rsa-key-n *rsa-key*))
+      (format str "~A~%~A~%~A~%~A~%~A~%~%" name
+              ran
+              (rsa-decrypt-unit ran)
+              (rsa-key-public-key *rsa-key*)
+              (rsa-key-n *rsa-key*))
       (format str ";;name random_number encrypt-random_number public_key n"))))
 
 (defun sig-check-id ()
@@ -29,16 +33,31 @@
               :element-type 'padding1
               :initial-contents '(0 0 0 0 0 0 0 0)))
 
+(defparameter *emLen* 1024)
+(defparameter *hLen* 256)
+
+(defun rsa-pss-mgf1 (hlen masklen string)
+  (let ((t (simple-array (unsigned-byte 8) (*)))
+        (k (ceiling (/ masklen hlen))))
+    (dotimes (i k)
+      (format "~A~%" t)
+      (setf t (concatenate '(simple-array (unsigned-byte 8) (*))
+                           t
+                           (hash (concatenate '(simple-array (unsigned-byte 8) (*))
+                         string
+                         i)))))))
 ;; s = m^d mod n
 ;; p.430
 ;; doing
 (defun sig-encrypt-rsa-pss (msg &optional (key *rsa-key*))
-  (let* ((salt (random 256))
+  (let* ((salt (integer-to-octets (random 256)))
          (m (concatenate '(simple-array (unsigned-byte 8) (*))
                          +padding1+
                          (hash (string-to-octets msg))
-                         (list salt)))
-         (db) 
-         (H (hash m)))
-       ;;(format t "~A" H)
+                         salt))
+         (DB (concatenate '(simple-array (unsigned-byte 8) (*))
+                          +padding2+
+                          salt))
+         (H (hash m))
+         (maskedDB (logxor DB H)))
        (return-from sig-encrypt-rsa-pss H)))

@@ -6,7 +6,9 @@
 ;;(setf *print-base* 2)
 
 (defparameter *rsa-key* 0)
+(defparameter *rsa-key-other* 0)
 (defparameter *rsa-cyphertext* 0)
+(defparameter *rsa-default-key-bits* 1024)
 
 (defstruct rsa-key
   name
@@ -70,7 +72,7 @@
 
 ;;1024bits e=17
 (defun rsa-get-key (filename)
-  (rsa-save-key (rsa-generate-key 'default 1024) filename))
+  (rsa-save-key (rsa-generate-key 'default *rsa-default-key-bits*) filename))
 
 (defun rsa-encrypt-unit (plaintext &optional (key *rsa-key*))
   (if (rsa-key-p key)

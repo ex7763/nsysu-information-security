@@ -7,6 +7,7 @@
 
 (defparameter *rsa-key* 0)
 (defparameter *rsa-cyphertext* 0)
+(defparameter *rsa-default-key-bits* 1024)
 
 (defstruct rsa-key
   name
@@ -41,9 +42,9 @@
 (defun rsa-generate-key (name bits &optional (e 17))
   (let* (
          ;;(*print-base* 16)
-         (length (/ bits 2))
-         (p (generate-prime length))
-         (q (generate-prime length))
+         (len (/ bits 2))
+         (p (generate-prime len))
+         (q (generate-prime len))
          (n (* p q))
          (r (* (- p 1) (- q 1)))
          (d (modular-inverse e r)))
@@ -70,12 +71,29 @@
 
 ;;1024bits e=17
 (defun rsa-get-key (filename)
-  (rsa-save-key (rsa-generate-key 'default 1024) filename))
+  (rsa-save-key (rsa-generate-key 'default *rsa-default-key-bits*) filename))
 
-(defun rsa-encrypt-unit (plaintext)
-        (big-mod plaintext (rsa-key-public-key *rsa-key*)
-           (rsa-key-n *rsa-key*)))
+(defun rsa-encrypt-unit (plaintext &optional (key *rsa-key*))
+  (if (rsa-key-p key)
+      (big-mod plaintext (rsa-key-public-key key) (rsa-key-n key))
+      (big-mod plaintext (car key) (cadr key))))
 
-(defun rsa-decrypt-unit (cyphertext)
-  (big-mod cyphertext (rsa-key-private-key *rsa-key*)
-           (rsa-key-n *rsa-key*)))
+(defun rsa-decrypt-unit (cyphertext &optional (key *rsa-key*))
+  (if (rsa-key-p key)
+      (big-mod cyphertext (rsa-key-private-key key) (rsa-key-n key))
+      (big-mod cyphertext (car key) (cadr key))))
+
+
+;;TODO OAEP
+(defun rsa-encrypt-string (string)
+  (let* ((IV (random 128))
+         (cyphertext (list IV))
+         (count 0)
+         (len (length string))
+         (tmp 0))
+    (loop
+       (when (= count len) (return))
+       (setf tmp (rsa-encrypt-unit (+ IV count)))
+       (setf cyphertext (append cyphertext (list (rsa-encrypt-unit (char-code (char string count))))))
+       (incf count))
+    (return-from rsa-encrypt-string cyphertext)))
