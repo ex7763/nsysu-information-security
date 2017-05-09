@@ -1,4 +1,4 @@
-(defun cf-sig-myfriend (&optional (filename "myfriend"))
+(defun cf-sig-friend (&optional (filename "myfriend"))
   (with-open-file (out (format nil "sig-~A" filename)
                        :direction :output
                        :if-exists :supersede)
@@ -6,6 +6,29 @@
       (do ((friend-name (read-line in nil 'eof)
                    (read-line in nil 'eof)))
           ((eql friend-name 'eof))
-        (progn
-          (let ((tmp (sig-encrypt-rsa-pss friend-name)))
-            (format out "~A~%" tmp)))))))
+        (format out "~A~%~A~%~%" (octets-to-integer (hash (string-to-octets friend-name))) (sig-encrypt-rsa-pss friend-name))))))
+
+(defun cf-sig-check-same-friend (myfriend otherfriend otherKey)
+  (with-open-file (my myfriend)
+    (with-open-file (other otherfriend)
+      (let ((my-hash nil)
+            (my-sig nil)
+            (same-hash nil)
+            (same-sig nil))
+        (do ((in (read my nil 'eof)
+                  (read my nil 'eof)))
+            ((eql in 'eof))
+          (setf my-hash (append my-hash (list in)))
+          (setf my-sig (append my-sig (list (read my)))))
+        (do ((in (read other nil 'eof)
+                 (read other nil 'eof)))
+            ((eql in 'eof))
+          (if (intersection (list in) my-hash)
+              (progn
+                (setf same-hash (append same-hash (list in)))
+                (setf same-sig (append same-sig (list (read other)))))
+              (read other)))
+        (format t "~A~%~%~A~%~%~A~%" my-hash same-hash same-sig)
+        ;;(sig-decrypt-rsa-pss
+
+        ))))

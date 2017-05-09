@@ -5,7 +5,7 @@
 (defmacro hash (msg)
   `(ironclad:digest-sequence :sha256 ,msg))
 
-(defun sig-generate-id (name)
+(defun sig-generate-id (name &optional (key *rsa-key*))
   (let ((ran (+ (random 10000000000000) 999999999999999)))
     (with-open-file (str "SIG_CHECK_FILE" :direction :output
                          :if-exists :supersede)
@@ -28,27 +28,32 @@
           t
           nil))))
 
-(defconstant +padding1+
-  (make-array 8
-              :element-type 'padding1
-              :initial-contents '(0 0 0 0 0 0 0 0)))
-
 (defparameter *emLen* 1024)
 (defparameter *hLen* 256)
+(defparameter *sLen* 8)
+(defparameter *padding2Len* (ceiling (/ (- *emLen* *hLen* *sLen* 2) 8)))
+
+(defconstant +padding1+
+  (make-array 8
+              :initial-contents '(0 0 0 0 0 0 0 0)))
+
+(defconstant +padding2+
+  (make-array *padding2Len*
+              :initial-element 1))
 
 (defun rsa-pss-mgf1 (hlen masklen string)
-  (let ((t (simple-array (unsigned-byte 8) (*)))
+  (let ((mask nil)
         (k (ceiling (/ masklen hlen))))
-    (dotimes (i k)
-      (format "~A~%" t)
-      (setf t (concatenate '(simple-array (unsigned-byte 8) (*))
-                           t
-                           (hash (concatenate '(simple-array (unsigned-byte 8) (*))
-                         string
-                         i)))))))
+    (dotimes (count k mask)
+        (setf mask (concatenate '(simple-array (unsigned-byte 8) (*))
+                                mask
+                                (hash (concatenate '(simple-array (unsigned-byte 8) (*))
+                                                   string
+                                                   (integer-to-octets count))))))
+    (return-from rsa-pss-mgf1 (subseq mask 0 (ceiling (/ masklen 8))))))
+
 ;; s = m^d mod n
-;; p.430
-;; doing
+;; p.429 ~ p.431
 (defun sig-encrypt-rsa-pss (msg &optional (key *rsa-key*))
   (let* ((salt (integer-to-octets (random 256)))
          (m (concatenate '(simple-array (unsigned-byte 8) (*))
@@ -59,5 +64,36 @@
                           +padding2+
                           salt))
          (H (hash m))
-         (maskedDB (logxor DB H)))
-       (return-from sig-encrypt-rsa-pss H)))
+         (maskedDB (map '(simple-array (unsigned-byte 8) (*))
+                        #'logxor
+                        DB (rsa-pss-mgf1 *hlen* (- *emLen* *hlen* 1) H)))
+         (EM (concatenate '(simple-array (unsigned-byte 8) (*))
+                          maskedDB H))
+         (sig (big-mod (octets-to-integer EM)
+                       (rsa-key-private-key key)
+                       (rsa-key-n key))))
+    (return-from sig-encrypt-rsa-pss sig)))
+
+(defun sig-decrypt-rsa-pss (msg sig &optional (key *rsa-key*))
+  (let* ((EM (integer-to-octets
+              (big-mod sig
+                       (rsa-key-public-key key)
+                       (rsa-key-n key))))
+         (mHash (hash (string-to-octets msg)))
+         (maskeLen (ceiling (/ (- *emLen* *hlen* 1) 8)))
+         (maskedDB (subseq EM 0 maskeLen))
+         (H (subseq EM maskeLen (length EM)))
+         (DB (map '(simple-array (unsigned-byte 8) (*))
+                  #'logxor
+                  (rsa-pss-mgf1 *hlen* (- *emLen* *hlen* 1) H)
+                  maskedDB))
+         ;;(pad2 (subseq DB 0 *padding2Len*))
+         (salt (integer-to-octets (aref DB *padding2Len*)))
+         (m (concatenate '(simple-array (unsigned-byte 8) (*))
+                         +padding1+
+                         mHash
+                         salt))
+         (H_check (octets-to-integer (hash m))))
+    (if (= (octets-to-integer H) H_check)
+        t
+        nil)))

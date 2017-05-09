@@ -5,7 +5,7 @@
 (defmacro hash (msg)
   `(ironclad:digest-sequence :sha256 ,msg))
 
-(defun sig-generate-id (name)
+(defun sig-generate-id (name &optional (key *rsa-key*))
   (let ((ran (+ (random 10000000000000) 999999999999999)))
     (with-open-file (str "SIG_CHECK_FILE" :direction :output
                          :if-exists :supersede)
@@ -13,8 +13,8 @@
       (format str "~A~%~A~%~A~%~A~%~A~%~%" name
               ran
               (rsa-decrypt-unit ran)
-              (rsa-key-public-key *rsa-key*)
-              (rsa-key-n *rsa-key*))
+              (rsa-key-public-key key)
+              (rsa-key-n key))
       (format str ";;name random_number encrypt-random_number public_key n"))))
 
 (defun sig-check-id ()
