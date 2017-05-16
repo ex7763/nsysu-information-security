@@ -1,7 +1,5 @@
 ;;(load "../math/general.lisp")
 
-(setf *random-state* (make-random-state t))
-
 (defun my-random (num)
   (+ (random (- num 3)) 2))
 

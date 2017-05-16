@@ -13,8 +13,8 @@
       (format str "~A~%~A~%~A~%~A~%~A~%~%" name
               ran
               (rsa-decrypt-unit ran)
-              (rsa-key-public-key *rsa-key*)
-              (rsa-key-n *rsa-key*))
+              (rsa-key-public-key key)
+              (rsa-key-n key))
       (format str ";;name random_number encrypt-random_number public_key n"))))
 
 (defun sig-check-id ()
@@ -55,7 +55,7 @@
 ;; s = m^d mod n
 ;; p.429 ~ p.431
 (defun sig-encrypt-rsa-pss (msg &optional (key *rsa-key*))
-  (let* ((salt (integer-to-octets (random 256)))
+  (let* ((salt (integer-to-octets (+ (random 254) 1)))
          (m (concatenate '(simple-array (unsigned-byte 8) (*))
                          +padding1+
                          (hash (string-to-octets msg))

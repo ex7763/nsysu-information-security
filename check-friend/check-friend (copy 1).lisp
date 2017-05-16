@@ -20,30 +20,24 @@
                 (my-sig nil)
                 (same-hash nil)
                 (same-sig nil)
-                (same-friend nil)
-                (otherkey (read key))
-                (hash-friend (make-hash-table)))
+                (otherkey (read key)))
             (do ((in (read my nil 'eof)
                      (read my nil 'eof)))
                 ((eql in 'eof))
-              (setf my-hash (append my-hash (list in)))
-              (setf (gethash in hash-friend) (read my-friend-name))
-              ;; (format t "~A~%~A~%" in (gethash in hash-friend))
+              (setf my-hash (append my-hash (list in (read my-friend-name))))
               (setf my-sig (append my-sig (list (read my)))))
             (do ((in (read other nil 'eof)
                      (read other nil 'eof)))
                 ((eql in 'eof))
-              ;;check same friend and their sig
-              (progn
-                (if (intersection (list in) my-hash)
-                    (progn
-                      (setf same-hash (write-to-string in))
-                      (setf same-sig (read other))
-                      ;; check other friend-sig
-                      (if (not(sig-decrypt-rsa-pss same-hash same-sig otherkey))
-                          (return-from cf-sig-check-same-friend nil)
-                          (setf same-friend (append same-friend (list (gethash in hash-friend))))))
-                  (read other))))
+;;check same friend and their sig
+              (if (intersection (list in) my-hash)
+                  (progn
+                    (setf same-hash (write-to-string in))
+                    (setf same-sig (read other))
+                    (if (not(sig-decrypt-rsa-pss same-hash same-sig otherkey))
+                        (return-from cf-sig-check-same-friend nil)))
+                  (read other)))
             ;;(format t "~A~%~%~A~%~%~A~%" my-hash same-hash same-sig)
-            (format t "~A~%" same-friend)
-            (return-from cf-sig-check-same-friend (values t same-friend))))))))
+;;TODO check same friend
+            (return-from cf-sig-check-same-friend t)
+            ))))))

@@ -1,4 +1,4 @@
 #!/bin/bash
 
 sbcl < main.lisp
-rm -f key SIG_CHECK_FILE sig-myfriend
+rm -f *Key SIG_CHECK_FILE sig-*

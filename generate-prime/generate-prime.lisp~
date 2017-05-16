@@ -1,3 +1,6 @@
+;;(load "../math/general.lisp")
+;;(load "./miller-rabin.lisp")
+
 ;; the bits should mod 4 = 0
 (defun generate-prime (bits)
   (let ((*print-base* 16)
@@ -10,7 +13,7 @@
       (let ((head-digit (random 16)))
         (setf head-digit (logior head-digit #b01100))
         (format str "~A" head-digit))
-      (dotimes (i (- digits 1))
+      (dotimes (i (- digits 2))
         (format str "~A" (logior (random 16) #b00001)))
       (let ((tmp (parse-integer str :radix 16)))
 ;; make test prime faster (maybe)

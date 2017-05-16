@@ -8,23 +8,28 @@
          (mod (square (big-mod b (/ p 2) m)) m))
         (t
          (mod (* (mod b m) (big-mod b (- p 1) m)) m))))
-         
-(defun octets-to-integer (octet-vec &key (start 0) end (big-endian t) n-bits)
-  (declare (type (simple-array (unsigned-byte 8) (*)) octet-vec))
-  (let ((end (or end (length octet-vec))))
-    (multiple-value-bind (complete-bytes extra-bits)
-        (if n-bits
-            (truncate n-bits 8)
-            (values (- end start) 0))
-      (declare (ignorable complete-bytes extra-bits))
-      (if big-endian
-          (do ((j start (1+ j))
-               (sum 0))
-              ((>= j end) sum)
-            (setf sum (+ (aref octet-vec j) (ash sum 8))))
-          (loop for i from (- end start 1) downto 0
-                for j from (1- end) downto start
-             sum (ash (aref octet-vec j) (* i 8)))))))
+
+;;擴展式歐幾里得演算法（Extended Euclidean Algorithm）
+;;求模反元素
+(defun modular-inverse (a n)
+  (let ((x 0) (r n)
+        (newx 1) (newr a)
+        (quotient 0)
+        (tmp 0))
+    (loop
+       (when (= newr 0) (return))
+       (setf quotient (truncate (/ r newr)))
+       (setf tmp newx)
+       (setf newx (- x (* quotient newx)))
+       (setf x tmp)
+       (setf tmp newr)
+       (setf newr (- r (* quotient newr)))
+       (setf r tmp))
+    (when (/= r 1)
+      (return-from modular-inverse 0))
+    (if (< x 0)
+        (return-from modular-inverse (+ x n))
+        (return-from modular-inverse x))))
 
 (defun octets-to-integer (octets)
   (declare (type (simple-array (unsigned-byte 8) (*)) octets))
@@ -35,17 +40,11 @@
       ;; ash = arithmetic shift
       (setf sum (+ (aref octets index) (ash sum 8))))))
 
-(defun integer-to-octets (bignum &key (n-bits (integer-length bignum))
-                                (big-endian t))
-  (let* ((n-bytes (ceiling n-bits 8))
-         (octet-vec (make-array n-bytes :element-type '(unsigned-byte 8))))
-    (declare (type (simple-array (unsigned-byte 8) (*)) octet-vec))
-    (if big-endian
-        (loop for i from (1- n-bytes) downto 0
-              for index from 0
-              do (setf (aref octet-vec index) (ldb (byte 8 (* i 8)) bignum))
-              finally (return octet-vec))
-        (loop for i from 0 below n-bytes
-              for byte from 0 by 8
-              do (setf (aref octet-vec i) (ldb (byte 8 byte) bignum))
-              finally (return octet-vec)))))
+(defun integer-to-octets (num)
+  ;; integer-length =  bits of number
+  (let* ((bytes-len (ceiling (integer-length num) 8))
+         (octets (make-array bytes-len :element-type '(unsigned-byte 8))))
+    (do ((count (- bytes-len 1) (- count 1))
+         (index 0 (+ index 1)))
+        ((< count 0) (return-from integer-to-octets octets))
+      (setf (aref octets index) (ldb (byte 8 (* count 8)) num)))))

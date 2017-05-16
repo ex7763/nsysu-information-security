@@ -8,7 +8,8 @@
 (defparameter *rsa-key* 0)
 (defparameter *rsa-key-other* 0)
 (defparameter *rsa-cyphertext* 0)
-(defparameter *rsa-default-key-bits* 1024)
+(defparameter *rsa-default-key-bits* 2048)
+(defparameter *rsa-default-key-radix* 10)
 
 (defstruct rsa-key
   name
@@ -17,28 +18,6 @@
   public-key  ;;e
   comments
   )
-
-;;擴展式歐幾里得演算法（Extended Euclidean Algorithm）
-;;求模反元素
-(defun modular-inverse (a n)
-  (let ((x 0) (r n)
-        (newx 1) (newr a)
-        (quotient 0)
-        (tmp 0))
-    (loop
-       (when (= newr 0) (return))
-       (setf quotient (truncate (/ r newr)))
-       (setf tmp newx)
-       (setf newx (- x (* quotient newx)))
-       (setf x tmp)
-       (setf tmp newr)
-       (setf newr (- r (* quotient newr)))
-       (setf r tmp))
-    (when (/= r 1)
-      (return-from modular-inverse 0))
-    (if (< x 0)
-        (return-from modular-inverse (+ x n))
-        (return-from modular-inverse x))))
 
 (defun rsa-generate-key (name bits &optional (e 17))
   (let* (
@@ -57,20 +36,20 @@
                       :private-key d
                       :public-key e)))))
 
-(defun rsa-save-key (key filename &optional (carry 16))
+(defun rsa-save-key (key filename &optional (carry *rsa-default-key-radix*))
   (let ((*print-base* carry))
     (with-open-file (str filename :direction :output
                        :if-exists :supersede)
       (format str "~S" key))))
 
-(defun rsa-load-key (filename &optional (carry 16))
+(defun rsa-load-key (filename &optional (carry *rsa-default-key-radix*))
   (let ((*read-base* carry)
         (*print-base* carry))
     (with-open-file (str filename)
       (let ((key (read str)))
         (setf *rsa-key* key)))))
 
-;;1024bits e=17
+;;2048bits e=17
 (defun rsa-get-key (filename)
   (rsa-save-key (rsa-generate-key 'default *rsa-default-key-bits*) filename))
 

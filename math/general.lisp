@@ -1,3 +1,5 @@
+(setf *random-state* (make-random-state t))
+
 (defun square (n)
   (* n n))
 
@@ -8,7 +10,29 @@
          (mod (square (big-mod b (/ p 2) m)) m))
         (t
          (mod (* (mod b m) (big-mod b (- p 1) m)) m))))
-         
+
+;;擴展式歐幾里得演算法（Extended Euclidean Algorithm）
+;;求模反元素
+(defun modular-inverse (a n)
+  (let ((x 0) (r n)
+        (newx 1) (newr a)
+        (quotient 0)
+        (tmp 0))
+    (loop
+       (when (= newr 0) (return))
+       (setf quotient (truncate (/ r newr)))
+       (setf tmp newx)
+       (setf newx (- x (* quotient newx)))
+       (setf x tmp)
+       (setf tmp newr)
+       (setf newr (- r (* quotient newr)))
+       (setf r tmp))
+    (when (/= r 1)
+      (return-from modular-inverse 0))
+    (if (< x 0)
+        (return-from modular-inverse (+ x n))
+        (return-from modular-inverse x))))
+
 (defun octets-to-integer (octets)
   (declare (type (simple-array (unsigned-byte 8) (*)) octets))
   (let ((end (length octets)))
