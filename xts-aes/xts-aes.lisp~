@@ -20,6 +20,7 @@
   (make-array 16
               :initial-contents '(0 13 10 7 4 1 14 11 8 5 2 15 12 9 6 3)))
 
+;; key expand
 ;; default 256 bit
 ;; other 128 192 256
 (defun aes-generate-key (&optional (bits 256))
@@ -31,29 +32,69 @@
            (format t "wrong bits size~%")
            (return-from aes-generate-key nil))))
   (let* ((bytes (/ bits 8))
-        (key (make-array bytes :element-type '(unsigned-byte 8))))
+        (key (make-array 256 :element-type '(unsigned-byte 8))))
     (dotimes (i bytes key)
       (setf (aref key i) (random 256)))))
 
-(defun aes-expandkey (key)
-  (cond ((= bits 256))
-        ((= bits 192))
-        ((= bits 128))
-        (t 
-         (progn
-           (format t "wrong bits size~%")
-           (return-from aes-generate-key nil))))
-  (let ((key-len (
-  )))))
+(defun aes-rot-word (word)
+  (let ((tmp (make-array 4 :element-type '(unsigned-byte 8))))
+    (setf (aref tmp 0) (aref word 1))
+    (setf (aref tmp 1) (aref word 2))
+    (setf (aref tmp 2) (aref word 3))
+    (setf (aref tmp 3) (aref word 0))
+    (return-from aes-rot-word tmp)))
 
+(defun aes-sub-word (word)
+  (declare (type (simple-array (unsigned-byte 8) (*)) word))
+  (dotimes (i 4 word)
+    (setf (aref word i) (svref +sbox+ (aref word i)))))
+
+(defun aes-expandkey (key &optional (bits 256))
+  (let ((repeat 0)
+        (key-len (/ bits 8)))
+    (cond ((= bits 256) (setf repeat 14))
+          ((= bits 192) (setf repeat 12))
+          ((= bits 128) (setf repeat 10))
+          (t 
+           (progn
+             (format t "wrong bits size~%")
+             (return-from aes-expandkey nil))))
+    (let* ((tmp1 (make-array 4 :element-type '(unsigned-byte 8)))
+           (tmp2 (make-array 4 :element-type '(unsigned-byte 8)))
+           (tmp3 (make-array 4 :element-type '(unsigned-byte 8))))
+      (dotimes (i repeat key)
+        (setf tmp1 (aes-rot-word (subseq key (- key-len 4) key-len))) 
+        ;;(format t "~A" tmp1)
+        (setf tmp2 (aes-sub-word tmp1))
+        (setf tmp3 tmp2)
+        (setf (aref tmp3 0) (logxor (aref tmp3 0)
+                                    (aref +rcon+ (+ i 1))))
+        (setf (subseq key key-len (+ key-len 4))
+              (map '(simple-array (unsigned-byte 8) (*))
+                   #'logxor
+                   (subseq key (- key-len 16) (- key-len 12))
+                   tmp3))
+        (dotimes (j 3)
+          (let ((shift (* (+ j 1) 4)))
+            (setf (subseq key (+ key-len shift) (+ key-len (+ 4 shift)))
+                  (map '(simple-array (unsigned-byte 8) (*))
+                       #'logxor
+                       (subseq key (+ key-len (- shift 4)) (+ key-len shift))
+                       (subseq key (- (+ key-len shift) 16) (- (+ key-len shift) 12))
+                       ))))
+        (setf key-len (+ key-len 16))))))
+                                             
+
+
+;;encrypt, decrypt function
+;; table inverse or not
+;; +sbox+        +sbox_inv+
+;; +shift+       +shift_inv+
 (defun aes-add-round-key (data key)
   (dotimes (i 16 data)
     (setf (svref data i) (logxor (svref data i)
                                  (svref key i)))))
 
-;; table inverse or not
-;; +sbox+        +sbox_inv+
-;; +shift+       +shift_inv+
 (defun aes-sub-bytes (data table)
   (dotimes (i 16 data)
     (setf (svref data i) (svref table (svref data i)))))
@@ -63,6 +104,17 @@
     (dotimes (i 16 tmp)
       (setf (svref tmp (svref table i)) (svref data i)))))
 
+(defun xtime (m)
+  (declare (type '(unsigned-byte 8) m))
+  )
 ;; (defun aes-round (data round-key)
 ;;   (aes-add-round-key data key)
 ;;   (
+
+
+(defun aes-encrypt-file (filename)
+  (with-open-file (str filename :element-type '(unsigned-byte 8))
+    (do ((in (read-byte str nil 'eof)
+             (read-byte str nil 'eof)))
+        ((eql in 'eof))
+      (format t "~A " in))))

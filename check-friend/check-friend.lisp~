@@ -45,5 +45,5 @@
                           (setf same-friend (append same-friend (list (gethash in hash-friend))))))
                   (read other))))
             ;;(format t "~A~%~%~A~%~%~A~%" my-hash same-hash same-sig)
-            ;; (format t "~A~%~A~%" hash-friend same-friend)
+            (format t "~A~%" same-friend)
             (return-from cf-sig-check-same-friend (values t same-friend))))))))
