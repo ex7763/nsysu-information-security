@@ -55,7 +55,7 @@
 ;; s = m^d mod n
 ;; p.429 ~ p.431
 (defun sig-encrypt-rsa-pss (msg &optional (key *rsa-key*))
-  (let* ((salt (integer-to-octets (+ (random 254) 1)))
+  (let* ((salt (integer-to-octets (+ (random 255) 1)))
          (m (concatenate '(simple-array (unsigned-byte 8) (*))
                          +padding1+
                          (hash (string-to-octets msg))
