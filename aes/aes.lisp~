@@ -36,9 +36,9 @@
   (make-array 256
               :initial-contents '(0 14 28 18 56 54 36 42 112 126 108 98 72 70 84 90 224 238 252 242 216 214 196 202 144 158 140 130 168 166 180 186 219 213 199 201 227 237 255 241 171 165 183 185 147 157 143 129 59 53 39 41 3 13 31 17 75 69 87 89 115 125 111 97 173 163 177 191 149 155 137 135 221 211 193 207 229 235 249 247 77 67 81 95 117 123 105 103 61 51 33 47 5 11 25 23 118 120 106 100 78 64 82 92 6 8 26 20 62 48 34 44 150 152 138 132 174 160 178 188 230 232 250 244 222 208 194 204 65 79 93 83 121 119 101 107 49 63 45 35 9 7 21 27 161 175 189 179 153 151 133 139 209 223 205 195 233 231 245 251 154 148 134 136 162 172 190 176 234 228 246 248 210 220 206 192 122 116 102 104 66 76 94 80 10 4 22 24 50 60 46 32 236 226 240 254 212 218 200 198 156 146 128 142 164 170 184 182 12 2 16 30 52 58 40 38 124 114 96 110 68 74 88 86 55 57 43 37 15 1 19 29 71 73 91 85 127 113 99 109 215 217 203 197 239 225 243 253 167 169 187 181 159 145 131 141)))
 
-;;; key expand
-;;; default 256 bit
-;;; other 128 192 256
+;; key expand
+;; default 256 bit
+;; other 128 192 256
 (defun aes-generate-key (&optional (bits 256))
   (cond ((= bits 256))
         ((= bits 192))
@@ -105,10 +105,10 @@
                                              
 
 
-;;;encrypt, decrypt function
-;;; table inverse or not
-;;; +sbox+        +sbox_inv+
-;;; +shift+       +shift_inv+
+;;encrypt, decrypt function
+;; table inverse or not
+;; +sbox+        +sbox_inv+
+;; +shift+       +shift_inv+
 (defun aes-add-round-key (data key)
   (dotimes (i 16 data)
     (setf (aref data i) (logxor (aref data i)
@@ -124,7 +124,7 @@
       (setf (aref tmp (aref table i)) (aref data i)))))
 
 (defun xtime (m)
-  ;;(declare (type (unsigned-byte 8) m))
+  ;(declare (type (unsigned-byte 8) m))
   (setf m (ash m 1))
   (if (>= m 256)
       (logxor (- m 256) #b00011011)
@@ -187,8 +187,8 @@
   (setf (subseq data 8 12) (aes-mix-columns-word-inv (subseq data 8 12)))
   (setf (subseq data 12 16) (aes-mix-columns-word-inv (subseq data 12 16)))
   (return-from aes-mix-columns-inv data))
+;; end encrypt decrypt function
 
-;;; end encrypt decrypt function
 (defun aes-encrypt (data key &optional (bits 256))
   (let ((ex-key (aes-expandkey key bits))
         (round 0)
@@ -259,7 +259,7 @@
       (setf (aref data (+ i (- bytes last))) nil))))
 
 
-;;; use ECB aes encrypt and decrypt
+;; use ECB for test
 (defun ECB-aes-encrypt-file (filename padding key)
   (with-open-file (in-str filename :element-type '(unsigned-byte 8))
     (with-open-file (out-str (format nil "~A.aes" filename)
@@ -275,10 +275,11 @@
              (progn
                (if (= len 16)
                     (progn
-                      (setf len 0)
-                      (setf buf (aes-encrypt buf key))
-                      (dotimes (i 16)
-                        (write-byte (aref buf i) out-str))))
+                (setf len 1)
+                (setf buf (aes-encrypt buf key))
+                (dotimes (i 16)
+                  (write-byte (aref buf i) out-
+                   
                (funcall padding buf len 16)
                (setf buf (aes-encrypt buf key))
                (dotimes (i 16 t)
@@ -307,27 +308,27 @@
             ((eql in 'eof)
              (progn
                (setf buf (aes-decrypt buf key))
-               (funcall padding buf 16)     
+
+               (funcall padding buf 16)
+               
                (dotimes (i 16 t)
                  (if (not (null (aref buf i)))
                      (write-byte (aref buf i) out-str)))))
           (if (= len 16)
               (progn
                 (setf len 1)
+
                 (setf buf (aes-decrypt buf key))
+                
                 (dotimes (i 16)
                   (write-byte (aref buf i) out-str)))
               (setf len (+ len 1)))
           (setf (aref buf (- len 1)) in))))))
 
+(ECB-aes-encrypt-file "1" #'padding-RKCS (aes-generate-key))
+(ECB-aes-decrypt-file "1.aes" #'de-padding-RKCS *aes-key*)
 
-;;; use CBC aes encrypt and decrypt
 
-;;; use CTR aes encrypt and decrypt
-
-;;; use XTS aes encrypt and decrypt
-
-;;; check plaintext, ciphertext and de-ciphertext
 (defun cmp-file (filename)
   (let ((count 0))
     (with-open-file (str filename :element-type '(unsigned-byte 8))
@@ -340,8 +341,10 @@
             (format t "~%")))
       (incf count)
       (format t "~A " in)))
+    
     (format t "~%~%")
     (setf count 0)
+    
     (with-open-file (str (format nil "~A.aes" filename) :element-type '(unsigned-byte 8))
       (do ((in (read-byte str nil 'eof)
                (read-byte str nil 'eof)))
@@ -352,8 +355,10 @@
               (format t "~%")))
         (incf count)
         (format t "~A " in)))
+
     (format t "~%~%")
-    (setf count 0)    
+    (setf count 0)
+    
     (with-open-file (str (format nil "un_~A.aes" filename) :element-type '(unsigned-byte 8))
       (do ((in (read-byte str nil 'eof)
                (read-byte str nil 'eof)))
@@ -364,8 +369,3 @@
               (format t "~%")))
         (incf count)
         (format t "~A " in)))))
-
-
-;;; testbench
-;(ECB-aes-encrypt-file "1" #'padding-RKCS (aes-generate-key))
-;(ECB-aes-decrypt-file "1.aes" #'de-padding-RKCS *aes-key*)

@@ -21,10 +21,10 @@
 ;;(format t "sig-check ~A" (cf-sig-check-same-friend "myfriend" "sig-myfriend" "sig-Bobfriend" "BobKey"))
 
 ;; aes
-(setf testct (aes-encrypt #(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) (aes-generate-key)))
-(aes-decrypt testct *aes-key*)
+(ECB-aes-encrypt-file "test_plaintext" #'padding-RKCS (aes-generate-key))
+(ECB-aes-decrypt-file "test_plaintext.aes" #'de-padding-RKCS *aes-key*)
+(cmp-file "test_plaintext")
 
-(setf testc (aes-encrypt #(1 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15) *aes-key*))
-(aes-decrypt testct *aes-key*)
+
 
 (gui)
