@@ -53,6 +53,15 @@
                                    :master f-right
                                    :width 30
                                    :height 15))
+           (gen-aes-key (make-instance 'button
+                                       :text "Generate aes-key"
+                                       :master f-left
+                                       :width 20
+                                       :command
+                                       (lambda ()
+                                         (aes-generate-key)
+                                         (setf (text message)
+                                               (format nil "You get a aes-key!~%~A" *aes-key*)))))
            (gen-key (make-instance 'button
                                    :text "Generate rsa-key"
                                    :master f-left
@@ -133,6 +142,7 @@
       (pack f-left :side :left)
       (pack f-right :side :right)
       ;; f-left
+      (pack gen-aes-key)
       (pack gen-key)
       (pack gen-id-file)
       (pack re-gen-id-file)

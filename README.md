@@ -45,4 +45,6 @@ de-padding-RKCS
 (aes-decrypt (data key &optional (bits 256)))  
 (ECB-aes-encrypt-file (filename padding key))  
 (ECB-aes-decrypt-file (filename padding key))  
+(CBC-aes-encrypt-file (filename padding key IV))  
+(CBC-aes-decrypt-file (filename padding key IV))  
 (cmp-file (filename))  

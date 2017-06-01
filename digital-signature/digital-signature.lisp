@@ -19,7 +19,7 @@
               (rsa-decrypt-unit ran)
               (rsa-key-public-key key)
               (rsa-key-n key))
-      (format str ";;name encrypt-random_number public_key n"))))
+      (format str "; name encrypt-random_number public_key n"))))
 
 (defun sig-re-generate-id (name &optional (key *rsa-key*))
   (with-open-file (str "SIG_CHECK_FILE")
@@ -29,11 +29,12 @@
       (let* ((en-ran (read str))
              (key-other (list (read str) (read str)))
              (ran (rsa-decrypt-unit en-ran key-other)))
+        (setf *Ra* ran)
         (format str2 "~A~%~A~%~A~%~A~%~%" name
                 (rsa-decrypt-unit (+ ran 1))
                 (rsa-key-public-key key) 
                 (rsa-key-n key))
-        (format str2 ";;name encrypt-random_number public_key n")))))
+        (format str2 "; name encrypt-random_number public_key n")))))
 
 (defun sig-check-id ()
   (with-open-file (str "re_SIG_CHECK_FILE")

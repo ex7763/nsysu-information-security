@@ -2,29 +2,46 @@
 ;;(load "../math/general.lisp")
 ;; decrypt and encrypt change
 (asdf:oos 'asdf:load-op 'ironclad) ;; used for sha256
+
+(defparameter *Ra* 0)
+(defparameter *Rb* 0)
+
 (defmacro hash (msg)
   `(ironclad:digest-sequence :sha256 ,msg))
 
 (defun sig-generate-id (name &optional (key *rsa-key*))
   (let ((ran (+ (random 10000000000000) 999999999999999)))
+    (setf *Ra* ran)
     (with-open-file (str "SIG_CHECK_FILE" :direction :output
                          :if-exists :supersede)
       ;; name random_number encrypt-random_number public_key n
-      (format str "~A~%~A~%~A~%~A~%~A~%~%" name
-              ran
+      (format str "~A~%~A~%~A~%~A~%~%" name
               (rsa-decrypt-unit ran)
               (rsa-key-public-key key)
               (rsa-key-n key))
-      (format str ";;name random_number encrypt-random_number public_key n"))))
+      (format str "; name encrypt-random_number public_key n"))))
+
+(defun sig-re-generate-id (name &optional (key *rsa-key*))
+  (with-open-file (str "SIG_CHECK_FILE")
+    (with-open-file (str2 "re_SIG_CHECK_FILE" :direction :output
+                          :if-exists :supersede)
+      (read str)
+      (let* ((en-ran (read str))
+             (key-other (list (read str) (read str)))
+             (ran (rsa-decrypt-unit en-ran key-other)))
+        (format str2 "~A~%~A~%~A~%~A~%~%" name
+                (rsa-decrypt-unit (+ ran 1))
+                (rsa-key-public-key key) 
+                (rsa-key-n key))
+        (format str2 "; name encrypt-random_number public_key n")))))
 
 (defun sig-check-id ()
-  (with-open-file (str "SIG_CHECK_FILE")
+  (with-open-file (str "re_SIG_CHECK_FILE")
   ;;name
     (read str)
-    (let ((ran (read str))
-          (en-ran (read str))
+    (let ((en-ran (read str))
           (key (list (read str) (read str))))
-      (if (= ran (rsa-encrypt-unit en-ran key))
+      (if (= (+ *Ra* 1) (rsa-encrypt-unit en-ran key))
           t
           nil))))
 
