@@ -255,7 +255,7 @@
 
 (defun de-padding-RKCS (data bytes)
   (let ((last (aref data (- bytes 1))))
-    (dotimes (i last)
+    (dotimes (i last data)
       (setf (aref data (+ i (- bytes last))) nil))))
 
 
@@ -310,7 +310,7 @@
             ((eql in 'eof)
              (progn
                (setf buf (aes-decrypt buf key))
-               (funcall padding buf 16)     
+               (funcall padding buf 16)
                (dotimes (i 16 t)
                  (if (not (null (aref buf i)))
                      (write-byte (aref buf i) out-str)))))
@@ -323,10 +323,13 @@
               (setf len (+ len 1)))
           (setf (aref buf (- len 1)) in))))))
 
-(defmacro copy-array (a1 a2)
+(defmacro array-copy (a1 a2)
   `(dotimes (i (length ,a1))
      (setf (aref ,a1 i) (aref ,a2 i))))
-
+(defmacro array-logxor (a1 a2)
+  `(map '(simple-array (unsigned-byte 8) (*))
+                               #'logxor
+                               ,a1 ,a2))
 ;;; use CBC aes encrypt and decrypt
 (defun CBC-aes-encrypt-file (filename padding key IV)
   (with-open-file (in-str filename :element-type '(unsigned-byte 8))
@@ -347,25 +350,20 @@
                (if (= len 16)
                     (progn
                       (setf len 0)
-                      (setf buf (map '(simple-array (unsigned-byte 8) (*))
-                                     #'logxor
-                                     buf pre-ciphertext))
+                      (setf buf (array-logxor buf pre-ciphertext))
                       (setf buf (aes-encrypt buf key))
                       (dotimes (i 16)
                         (write-byte (aref buf i) out-str))))
                (funcall padding buf len 16)
                (setf buf (aes-encrypt buf key))
                (dotimes (i 16 t)
-                 (write-byte (aref buf i) out-str))
-               ))
+                 (write-byte (aref buf i) out-str))))
           (if (= len 16)
               (progn
                 (setf len 1)
-                (setf buf (map '(simple-array (unsigned-byte 8) (*))
-                               #'logxor
-                               buf pre-ciphertext))
+                (setf buf (array-logxor buf pre-ciphertext))
                 (setf buf (aes-encrypt buf key))
-                (copy-array pre-ciphertext buf)
+                (array-copy pre-ciphertext buf)
                 (dotimes (i 16)
                   (write-byte (aref buf i) out-str)))
               (setf len (+ len 1)))
@@ -376,23 +374,19 @@
     (with-open-file (out-str (format nil "~A" (subseq filename 0 (- (length filename) 4)))
                              :direction :output
                              :if-exists :supersede
-                              :if-does-not-exist :create
+                             :if-does-not-exist :create
                              :element-type '(unsigned-byte 8))
       (let ((buf (make-array 16 :element-type '(unsigned-byte 8)))
             (pre-ciphertext (make-array 16 :element-type '(unsigned-byte 8)))
             (pre-pre-ciphertext (make-array 16 :element-type '(unsigned-byte 8)))
             (len 0))
-       (dotimes (i 16)
-         (setf (aref pre-pre-ciphertext i) (+ (mod IV (- 256 i)) i)))
+        (dotimes (i 16)
+          (setf (aref pre-pre-ciphertext i) (+ (mod IV (- 256 i)) i)))
         (do ((in (read-byte in-str nil 'eof)
                  (read-byte in-str nil 'eof)))
             ((eql in 'eof)
              (progn
                (setf buf (aes-decrypt buf key))
-               ;; (setf buf (map '(simple-array (unsigned-byte 8) (*))
-               ;;                #'logxor
-               ;;                buf pre-pre-ciphertext))
-               
                (funcall padding buf 16)
                (dotimes (i 16 t)
                  (if (not (null (aref buf i)))
@@ -400,18 +394,75 @@
           (if (= len 16)
               (progn
                 (setf len 1)
-                (copy-array pre-ciphertext buf)
+                (array-copy pre-ciphertext buf)
                 (setf buf (aes-decrypt buf key))
-                (setf buf (map '(simple-array (unsigned-byte 8) (*))
-                               #'logxor
-                               buf pre-pre-ciphertext))
-                (copy-array pre-pre-ciphertext pre-ciphertext)
+                (setf buf (array-logxor buf pre-pre-ciphertext))
+                (array-copy pre-pre-ciphertext pre-ciphertext)
                 (dotimes (i 16)
                   (write-byte (aref buf i) out-str)))
               (setf len (+ len 1)))
           (setf (aref buf (- len 1)) in))))))
 
+
+(defmacro array-add (array num)
+  `(dotimes (i (length ,array))
+     (if (> (+ (aref ,array i) ,num) 255)
+         (progn
+           (setf ,num (- (+ (aref ,array i) ,num) 255))
+           (setf (aref ,array i) 0))
+         (progn
+           (setf (aref ,array i) (+ (aref ,array i) ,num))
+           (return)))))
 ;;; use CTR aes encrypt and decrypt
+(defun CTR-aes-file (filename padding key IV en-or-de)
+  (with-open-file (in-str filename :element-type '(unsigned-byte 8))
+    (with-open-file (out-str (format nil "~A.aes" filename)
+                             :direction :output
+                             :if-exists :supersede
+                             :if-does-not-exist :create
+                             :element-type '(unsigned-byte 8))
+      (let ((buf (make-array 16 :element-type '(unsigned-byte 8)))
+            (counter (make-array 16 :element-type '(unsigned-byte 8)))
+            (tmp-counter (make-array 16 :element-type '(unsigned-byte 8)))
+            (len 0))
+        (dotimes (i 16)
+          (setf (aref counter i) (+ (mod IV (- 256 i)) i)))
+        (do ((in (read-byte in-str nil 'eof)
+                 (read-byte in-str nil 'eof)))
+            ((eql in 'eof)
+             (if (= en-or-de 1)
+                 (progn
+                   (if (= len 16)
+                       (progn
+                         (setf len 0)
+                         (array-copy tmp-counter counter)
+                         (setf buf (array-logxor (aes-encrypt tmp-counter key) buf))
+                         (array-add counter 1)
+                         (dotimes (i 16)
+                           (write-byte (aref buf i) out-str))))
+                   (funcall padding buf len 16)
+                   (setf buf (array-logxor (aes-encrypt counter key) buf))
+                   (dotimes (i 16 t)
+                     (write-byte (aref buf i) out-str)))
+                 (progn
+                   (setf buf (array-logxor (aes-encrypt counter key) buf))
+                   (dotimes (i (- 16 (aref buf 15)) t)
+                     (write-byte (aref buf i) out-str)))))
+          (if (= len 16)
+              (progn
+                (setf len 1)
+                (array-copy tmp-counter counter)
+                (setf buf (array-logxor (aes-encrypt tmp-counter key) buf))
+                (array-add counter 1)
+                (dotimes (i 16)
+                  (write-byte (aref buf i) out-str)))
+              (setf len (+ len 1)))
+          (setf (aref buf (- len 1)) in))))))
+
+(defmacro CTR-aes-encrypt-file (filename padding key IV)
+  `(CTR-aes-file ,filename ,padding ,key ,IV 1))
+(defmacro CTR-aes-decrypt-file (filename padding key IV)
+  `(CTR-aes-file ,filename ,padding ,key ,IV 0))
 
 ;;; use XTS aes encrypt and decrypt
 
@@ -419,18 +470,20 @@
 (defun cmp-file (filename)
   (let ((count 0))
     (with-open-file (str filename :element-type '(unsigned-byte 8))
-    (do ((in (read-byte str nil 'eof)
+      (format t "~%")
+      (do ((in (read-byte str nil 'eof)
              (read-byte str nil 'eof)))
         ((eql in 'eof))
-      (if (= count 16)
-          (progn
-            (setf count 0)
-            (format t "~%")))
-      (incf count)
-      (format t "~A " in)))
+        (if (= count 16)
+            (progn
+              (setf count 0)
+              (format t "~%")))
+        (incf count)
+        (format t "~4A" in)))
     (format t "~%~%")
     (setf count 0)
     (with-open-file (str (format nil "~A.aes" filename) :element-type '(unsigned-byte 8))
+      (format t "~%")
       (do ((in (read-byte str nil 'eof)
                (read-byte str nil 'eof)))
           ((eql in 'eof))
@@ -439,19 +492,19 @@
               (setf count 0)
               (format t "~%")))
         (incf count)
-        (format t "~A " in)))
+        (format t "~4A" in)))
     (format t "~%~%")
-    (setf count 0)    
-    (with-open-file (str (format nil "~A.ae" filename) :element-type '(unsigned-byte 8))
-      (do ((in (read-byte str nil 'eof)
-               (read-byte str nil 'eof)))
-          ((eql in 'eof))
-        (if (= count 16)
-            (progn
-              (setf count 0)
-              (format t "~%")))
-        (incf count)
-        (format t "~A " in)))))
+    (setf count 0)))
+    ;; (with-open-file (str (format nil "~A.ae" filename) :element-type '(unsigned-byte 8))
+    ;;   (do ((in (read-byte str nil 'eof)
+    ;;            (read-byte str nil 'eof)))
+    ;;       ((eql in 'eof))
+    ;;     (if (= count 16)
+    ;;         (progn
+    ;;           (setf count 0)
+    ;;           (format t "~%")))
+    ;;     (incf count)
+    ;;     (format t "~A " in)))))
 
 
 ;;; testbench

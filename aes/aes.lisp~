@@ -389,7 +389,6 @@
             ((eql in 'eof)
              (progn
                (setf buf (aes-decrypt buf key))
-               (format t "~A " buf)
                ;; (setf buf (map '(simple-array (unsigned-byte 8) (*))
                ;;                #'logxor
                ;;                buf pre-pre-ciphertext))

@@ -20,14 +20,16 @@
 
 ;;(format t "sig-check ~A" (cf-sig-check-same-friend "myfriend" "sig-myfriend" "sig-Bobfriend" "BobKey"))
 
-(setf *Ra* 10000)
+;(setf *Ra* 10000)
 
 ;; aes
 ;(time (ECB-aes-encrypt-file "test_plaintext" #'padding-RKCS (aes-generate-key)))
 ;(time (ECB-aes-decrypt-file "test_plaintext.aes" #'de-padding-RKCS *aes-key*))
-(time (CBC-aes-encrypt-file "test_plaintext" #'padding-RKCS (aes-generate-key) *Ra*))
-(time (CBC-aes-decrypt-file "test_plaintext.aes" #'de-padding-RKCS *aes-key* *Ra*))
-;(cmp-file "test_plaintext")
+;(CBC-aes-encrypt-file "test_plaintext" #'padding-RKCS (aes-generate-key) *Ra*)
+;(CBC-aes-decrypt-file "test_plaintext.aes" #'de-padding-RKCS *aes-key* *Ra*)
+(CTR-aes-encrypt-file "test_plaintext" #'padding-RKCS (aes-generate-key) 1000)
+(cmp-file "test_plaintext")
+(CTR-aes-decrypt-file "test_plaintext.aes" #'de-padding-RKCS *aes-key* 1000)
 
 
-(gui)
+;(gui)
