@@ -3,9 +3,9 @@
 (load "./generate-prime/miller-rabin.lisp")
 (load "./generate-prime/generate-prime.lisp")
 (load "./RSA/RSA.lisp")
+(load "./aes/aes.lisp")
 (load "./digital-signature/digital-signature.lisp")
 (load "./check-friend/check-friend.lisp")
-(load "./aes/aes.lisp")
 (load "./gui.lisp")
 
 ;;(sig-generate-id "eddie")
@@ -27,9 +27,11 @@
 ;(time (ECB-aes-decrypt-file "test_plaintext.aes" #'de-padding-RKCS *aes-key*))
 ;(CBC-aes-encrypt-file "test_plaintext" #'padding-RKCS (aes-generate-key) *Ra*)
 ;(CBC-aes-decrypt-file "test_plaintext.aes" #'de-padding-RKCS *aes-key* *Ra*)
-(CTR-aes-encrypt-file "test_plaintext" #'padding-RKCS (aes-generate-key) 1000)
-(cmp-file "test_plaintext")
-(CTR-aes-decrypt-file "test_plaintext.aes" #'de-padding-RKCS *aes-key* 1000)
+;(aes-generate-key)
+;(aes-save-key *aes-key* "aes-key")
+;; (aes-load-key "aes-key")
+;; (CTR-aes-encrypt-file "test_plaintext" #'padding-RKCS *aes-key* 1000)
+;; (cmp-file "test_plaintext")
+;; (CTR-aes-decrypt-file "test_plaintext.aes" #'de-padding-RKCS *aes-key* 1000)
 
-
-;(gui)
+(gui)

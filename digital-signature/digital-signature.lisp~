@@ -21,7 +21,7 @@
               (rsa-key-n key))
       (format str "; name encrypt-random_number public_key n"))))
 
-(defun sig-re-generate-id (name &optional (key *rsa-key*))
+(defun sig-re-generate-id (name aes-key &optional (key *rsa-key*))
   (with-open-file (str "SIG_CHECK_FILE")
     (with-open-file (str2 "re_SIG_CHECK_FILE" :direction :output
                           :if-exists :supersede)
@@ -29,19 +29,25 @@
       (let* ((en-ran (read str))
              (key-other (list (read str) (read str)))
              (ran (rsa-decrypt-unit en-ran key-other)))
-        (format str2 "~A~%~A~%~A~%~A~%~%" name
+        (setf *Ra* ran)
+        (setf *rsa-key-other* key-other)
+        (format str2 "~A~%~A~%~A~%~A~%~A~%~%" name
                 (rsa-decrypt-unit (+ ran 1))
                 (rsa-key-public-key key) 
-                (rsa-key-n key))
-        (format str2 "; name encrypt-random_number public_key n")))))
+                (rsa-key-n key)
+                (rsa-encrypt-unit (octets-to-integer aes-key) key))
+        (format str2 "; name encrypt-random_number public_key n aes-key")))))
 
 (defun sig-check-id ()
   (with-open-file (str "re_SIG_CHECK_FILE")
   ;;name
     (read str)
     (let ((en-ran (read str))
-          (key (list (read str) (read str))))
-      (if (= (+ *Ra* 1) (rsa-encrypt-unit en-ran key))
+          (key-other (list (read str) (read str)))
+          (aes-key (read str)))
+      (setf *rsa-key-other* key-other)
+      (setf *aes-key* (integer-to-octets (rsa-decrypt-unit aes-key *rsa-key-other*)))
+      (if (= (+ *Ra* 1) (rsa-decrypt-unit en-ran key-other))
           t
           nil))))
 
@@ -86,16 +92,11 @@
                         DB (rsa-pss-mgf1 *hlen* (- *emLen* *hlen* 1) H)))
          (EM (concatenate '(simple-array (unsigned-byte 8) (*))
                           maskedDB H))
-         (sig (big-mod (octets-to-integer EM)
-                       (rsa-key-private-key key)
-                       (rsa-key-n key))))
+         (sig (rsa-encrypt-unit (octets-to-integer EM) key)))
     (return-from sig-encrypt-rsa-pss sig)))
 
 (defun sig-decrypt-rsa-pss (msg sig &optional (key *rsa-key*))
-  (let* ((EM (integer-to-octets
-              (big-mod sig
-                       (rsa-key-public-key key)
-                       (rsa-key-n key))))
+  (let* ((EM (integer-to-octets (rsa-decrypt-unit sig key)))
          (mHash (hash (string-to-octets msg)))
          (maskeLen (ceiling (/ (- *emLen* *hlen* 1) 8)))
          (maskedDB (subseq EM 0 maskeLen))
